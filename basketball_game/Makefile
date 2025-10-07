@@ -1,4 +1,3 @@
-```makefile
 # =========================================================
 # RISC-V Basketball Game Build System
 # =========================================================
@@ -41,37 +40,42 @@ all: $(BUILD_DIR) $(TARGET) $(BINARY)
 # Create build directory
 # =========================================================
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)
 
 # =========================================================
 # Compile C files
 # =========================================================
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) $(CFLAGS) -I$(INC_DIR) -c $< -o $@
+	@echo "Compiling $<..."
+	@$(CC) $(CFLAGS) -I$(INC_DIR) -c $< -o $@
 
 # =========================================================
 # Assemble assembly files
 # =========================================================
 $(BUILD_DIR)/%.o: $(ASM_DIR)/%.s
-	$(AS) $(CFLAGS) -c $< -o $@
+	@echo "Assembling $<..."
+	@$(AS) $(CFLAGS) -c $< -o $@
 
 # =========================================================
 # Link all objects
 # =========================================================
 $(TARGET): $(OBJECTS)
-	$(LD) $(LDFLAGS) $(OBJECTS) -o $@
+	@echo "Linking..."
+	@$(LD) $(LDFLAGS) $(OBJECTS) -o $@
 
 # =========================================================
 # Create binary image
 # =========================================================
 $(BINARY): $(TARGET)
-	$(OBJCOPY) -O binary $< $@
+	@echo "Creating binary..."
+	@$(OBJCOPY) -O binary $< $@
 
 # =========================================================
 # Clean up build artifacts
 # =========================================================
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET) $(BINARY)
+	@echo "Cleaning up..."
+	@rm -rf $(BUILD_DIR) $(TARGET) $(BINARY)
 
 # =========================================================
 # Phony targets
@@ -84,4 +88,3 @@ clean:
 person_a: $(BUILD_DIR) $(BUILD_DIR)/game_state.o $(BUILD_DIR)/physics.o $(BUILD_DIR)/collision.o $(BUILD_DIR)/input.o
 
 person_b: $(BUILD_DIR) $(BUILD_DIR)/vga.o $(BUILD_DIR)/graphics.o $(BUILD_DIR)/sprites.o $(BUILD_DIR)/hardware.o
-```
