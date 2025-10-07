@@ -1,5 +1,7 @@
 int main(void){
-    while (1)
+    volatile int run = 1;
+    
+    while (run)
     {
         
     }
