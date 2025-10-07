@@ -1,11 +1,226 @@
-CC = riscv32-unknown-elf-gcc
-CFLAGS = -march=rv32im -mabi=ilp32 -O0 -g -Wall -Wextra
+# =========================================================
+# RISC-V Basketball Game Build System
+# =========================================================
 
-all: test
+# Toolchain
+CC       := riscv32-unknown-elf-gcc
+AS       := riscv32-unknown-elf-as
+LD       := riscv32-unknown-elf-ld
+OBJCOPY  := riscv32-unknown-elf-objcopy
+OBJDUMP  := riscv32-unknown-elf-objdump
+SIZE     := riscv32-unknown-elf-size
 
-test:
-	$(CC) $(CFLAGS) -c src/main.c -o main.o
-	@echo "Build successful!"
+# Directories
+SRC_DIR   := src
+INC_DIR   := include
+BUILD_DIR := build
+ASM_DIR   := asm
 
+# Output files
+TARGET := basketball_game.elf
+BINARY := basketball_game.bin
+HEX    := basketball_game.hex
+LST    := basketball_game.lst
+MAP    := $(BUILD_DIR)/basketball_game.map
+
+# Architecture flags (shared between C and ASM)
+ARCH_FLAGS := -march=rv32i -mabi=ilp32
+
+# Compiler flags
+CFLAGS := $(ARCH_FLAGS) \
+          -O2 \
+          -Wall \
+          -Wextra \
+          -I$(INC_DIR) \
+          -ffunction-sections \
+          -fdata-sections
+
+# Assembler flags
+ASFLAGS := -march=rv32i_zicsr -mabi=ilp32
+
+# Linker flags
+LDFLAGS := $(ARCH_FLAGS) \
+           -T linker-script.ld \
+           -nostartfiles \
+           -Wl,--gc-sections \
+           -Wl,-Map=$(MAP)
+
+# Source files
+C_SOURCES   := $(wildcard $(SRC_DIR)/*.c)
+ASM_SOURCES := $(wildcard $(ASM_DIR)/*.s)
+
+# Header files (for dependency tracking)
+HEADERS := $(wildcard $(INC_DIR)/*.h)
+
+# Object files
+C_OBJECTS   := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(C_SOURCES))
+ASM_OBJECTS := $(patsubst $(ASM_DIR)/%.s,$(BUILD_DIR)/%.o,$(ASM_SOURCES))
+OBJECTS     := $(ASM_OBJECTS) $(C_OBJECTS)
+
+# =========================================================
+# Default target
+# =========================================================
+.DEFAULT_GOAL := all
+
+all: $(BUILD_DIR) $(TARGET) $(BINARY) $(HEX) size
+
+# =========================================================
+# Create build directory
+# =========================================================
+$(BUILD_DIR):
+	@echo "Creating build directory..."
+	@mkdir -p $(BUILD_DIR)
+
+# =========================================================
+# Compile C files (with dependency tracking)
+# =========================================================
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS)
+	@echo "CC    $<"
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+# =========================================================
+# Assemble assembly files
+# =========================================================
+$(BUILD_DIR)/%.o: $(ASM_DIR)/%.s
+	@echo "AS    $<"
+	@$(AS) $(ASFLAGS) -c $< -o $@
+
+# =========================================================
+# Link all objects
+# =========================================================
+$(TARGET): $(OBJECTS) linker-script.ld
+	@echo "LD    $@"
+	@$(CC) $(LDFLAGS) $(OBJECTS) -o $@
+
+# =========================================================
+# Create binary image
+# =========================================================
+$(BINARY): $(TARGET)
+	@echo "BIN   $@"
+	@$(OBJCOPY) -O binary $< $@
+
+# =========================================================
+# Create Intel HEX file
+# =========================================================
+$(HEX): $(TARGET)
+	@echo "HEX   $@"
+	@$(OBJCOPY) -O ihex $< $@
+
+# =========================================================
+# Create disassembly listing
+# =========================================================
+$(LST): $(TARGET)
+	@echo "LST   $@"
+	@$(OBJDUMP) -D $< > $@
+
+# =========================================================
+# Show binary size
+# =========================================================
+.PHONY: size
+size: $(TARGET)
+	@echo ""
+	@echo "===== Binary Size ====="
+	@$(SIZE) basketball_game.elf
+	@echo ""
+
+# =========================================================
+# Clean up build artifacts
+# =========================================================
+.PHONY: clean
 clean:
-	rm -f *.o *.elf *.bin
+	@echo "Cleaning..."
+	@rm -rf $(BUILD_DIR) $(TARGET) $(BINARY) $(HEX) $(LST)
+
+# =========================================================
+# Deep clean (also remove backups, etc.)
+# =========================================================
+.PHONY: distclean
+distclean: clean
+	@echo "Deep cleaning..."
+	@find . -name "*~" -delete
+	@find . -name "*.swp" -delete
+
+# =========================================================
+# Developer-specific partial builds
+# =========================================================
+.PHONY: person_a person_b
+
+person_a: $(BUILD_DIR) \
+          $(BUILD_DIR)/game_state.o \
+          $(BUILD_DIR)/physics.o \
+          $(BUILD_DIR)/collision.o \
+          $(BUILD_DIR)/input.o \
+          $(BUILD_DIR)/utils.o
+	@echo "Person A modules built successfully!"
+
+person_b: $(BUILD_DIR) \
+          $(BUILD_DIR)/vga.o \
+          $(BUILD_DIR)/graphics.o \
+          $(BUILD_DIR)/sprites.o \
+          $(BUILD_DIR)/hardware.o
+	@echo "Person B modules built successfully!"
+
+# =========================================================
+# Debugging targets
+# =========================================================
+.PHONY: dump symbols headers map
+
+# Disassemble the ELF file
+dump: $(LST)
+	@less $(LST)
+
+# Show all symbols
+symbols: $(TARGET)
+	@$(OBJDUMP) -t $< | less
+
+# Show section headers
+headers: $(TARGET)
+	@$(OBJDUMP) -h $
+
+# Show memory map
+map: $(TARGET)
+	@cat $(MAP) | less
+
+# =========================================================
+# Help target
+# =========================================================
+.PHONY: help
+help:
+	@echo "Basketball Game Build System"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all       - Build everything (default)"
+	@echo "  clean     - Remove build artifacts"
+	@echo "  distclean - Remove all generated files"
+	@echo "  person_a  - Build Person A modules only"
+	@echo "  person_b  - Build Person B modules only"
+	@echo "  size      - Show binary size"
+	@echo "  dump      - Disassemble binary"
+	@echo "  symbols   - Show symbol table"
+	@echo "  headers   - Show section headers"
+	@echo "  map       - Show memory map"
+	@echo "  help      - Show this help"
+	@echo ""
+	@echo "Variables:"
+	@echo "  DEBUG=1   - Build with debug symbols (e.g., make DEBUG=1)"
+
+# =========================================================
+# Optional: Debug build variant
+# =========================================================
+ifdef DEBUG
+CFLAGS += -g -Og -DDEBUG
+LDFLAGS += -Wl,--print-memory-usage
+$(info Building in DEBUG mode)
+endif
+
+# =========================================================
+# Optional: Verbose build
+# =========================================================
+ifdef VERBOSE
+.SILENT:
+endif
+
+# =========================================================
+# Prevent deletion of intermediate files
+# =========================================================
+.PRECIOUS: $(BUILD_DIR)/%.o
