@@ -36,7 +36,7 @@ int16_t cos_lookup(int16_t angle) {
 }
 
 int32_t fixed_multiply(int32_t a, int32_t b, uint8_t shift) {
-    int64_t result = (int64_t)a * (int64_t)b;
+    int32_t result = (int32_t)a * (int32_t)b;
     return (int32_t)(result >> shift);
 }
 
@@ -45,7 +45,7 @@ int32_t fixed_divide(int32_t a, int32_t b, uint8_t shift) {
         return 0;
     }
     
-    int64_t result = ((int64_t)a << shift) / b;
+    int32_t result = ((int32_t)a << shift) / b;
     return (int32_t)result;
 }
 
