@@ -68,58 +68,34 @@ all: $(BUILD_DIR) $(TARGET) $(BINARY) $(HEX) size
 # Create build directory
 # =========================================================
 $(BUILD_DIR):
-<<<<<<< HEAD
-=======
 	@echo "Creating build directory..."
->>>>>>> 1e3aaa6a6546cea74414e956fc2eaaf9d9b6f432
 	@mkdir -p $(BUILD_DIR)
 
 # =========================================================
 # Compile C files (with dependency tracking)
 # =========================================================
-<<<<<<< HEAD
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	@echo "Compiling $<..."
-	@$(CC) $(CFLAGS) -I$(INC_DIR) -c $< -o $@
-=======
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS)
 	@echo "CC    $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
->>>>>>> 1e3aaa6a6546cea74414e956fc2eaaf9d9b6f432
 
 # =========================================================
 # Assemble assembly files
 # =========================================================
 $(BUILD_DIR)/%.o: $(ASM_DIR)/%.s
-<<<<<<< HEAD
-	@echo "Assembling $<..."
-	@$(AS) $(CFLAGS) -c $< -o $@
-=======
 	@echo "AS    $<"
 	@$(AS) $(ASFLAGS) -c $< -o $@
->>>>>>> 1e3aaa6a6546cea74414e956fc2eaaf9d9b6f432
 
 # =========================================================
 # Link all objects
 # =========================================================
-<<<<<<< HEAD
-$(TARGET): $(OBJECTS)
-	@echo "Linking..."
-	@$(LD) $(LDFLAGS) $(OBJECTS) -o $@
-=======
 $(TARGET): $(OBJECTS) linker-script.ld
 	@echo "LD    $@"
 	@$(CC) $(LDFLAGS) $(OBJECTS) -o $@
->>>>>>> 1e3aaa6a6546cea74414e956fc2eaaf9d9b6f432
 
 # =========================================================
 # Create binary image
 # =========================================================
 $(BINARY): $(TARGET)
-<<<<<<< HEAD
-	@echo "Creating binary..."
-	@$(OBJCOPY) -O binary $< $@
-=======
 	@echo "BIN   $@"
 	@$(OBJCOPY) -O binary $< $@
 
@@ -146,20 +122,14 @@ size: $(TARGET)
 	@echo "===== Binary Size ====="
 	@$(SIZE) basketball_game.elf
 	@echo ""
->>>>>>> 1e3aaa6a6546cea74414e956fc2eaaf9d9b6f432
 
 # =========================================================
 # Clean up build artifacts
 # =========================================================
 .PHONY: clean
 clean:
-<<<<<<< HEAD
-	@echo "Cleaning up..."
-	@rm -rf $(BUILD_DIR) $(TARGET) $(BINARY)
-=======
 	@echo "Cleaning..."
 	@rm -rf $(BUILD_DIR) $(TARGET) $(BINARY) $(HEX) $(LST)
->>>>>>> 1e3aaa6a6546cea74414e956fc2eaaf9d9b6f432
 
 # =========================================================
 # Deep clean (also remove backups, etc.)

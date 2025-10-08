@@ -1,30 +1,18 @@
-<<<<<<< HEAD
-// Corrected header outline:
-#define VGA_WIDTH  320
-#define VGA_HEIGHT 240
-#define VGA_PIXEL_BUFFER0 ((uint16_t*)0x08000000)  
-#define VGA_PIXEL_BUFFER1 ((uint16_t*)0x08012C00)
-#define VGA_CONTROL_BASE  0xFF203020               
-
-void vga_draw_pixel(int x, int y, uint16_t color);  
-uint16_t vga_get_pixel(int x, int y);
-=======
 #ifndef VGA_H
 #define VGA_H
 
-#include "common.h"
 #include <stdint.h>
 
-// VGA hardware addresses (adjust for your board!)
+/* VGA hardware addresses (adjust for your board!) */
 #define VGA_PIXEL_BUFFER_BASE   0xC8000000
 #define VGA_CHAR_BUFFER_BASE    0xC9000000
 #define VGA_CONTROL_BASE        0xFF203020
 
-// VGA resolution constants
+/* VGA resolution constants */
 #define VGA_WIDTH               320
 #define VGA_HEIGHT              240
 
-// Function declarations
+/* Function declarations */
 
 /**
  * Initialize the VGA controller
@@ -72,5 +60,4 @@ void vga_wait_vsync(void);
  */
 uint16_t rgb_to_rgb565(uint8_t r, uint8_t g, uint8_t b);
 
-#endif // VGA_H
->>>>>>> 1e3aaa6a6546cea74414e956fc2eaaf9d9b6f432
+#endif /* VGA_H */
