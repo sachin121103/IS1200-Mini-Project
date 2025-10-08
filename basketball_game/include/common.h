@@ -89,4 +89,4 @@ typedef enum {
     PHASE_SCORED
 } GamePhase;
 
-#endif /* COMMON_H */
+#endif 
