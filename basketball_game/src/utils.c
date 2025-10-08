@@ -44,7 +44,6 @@ int32_t fixed_divide(int32_t a, int32_t b, uint8_t shift) {
     if (b == 0) {
         return 0;
     }
-    
     int32_t result = ((int32_t)a << shift) / b;
     return (int32_t)result;
 }
