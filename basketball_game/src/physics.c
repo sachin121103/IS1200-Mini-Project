@@ -1,176 +1,148 @@
-#include "../include/physics.h"
-#include "../include/utils.h"
 #include "../include/common.h"
 
+/* ===========================
+   EXTERNAL DEPENDENCIES
+   =========================== */
+// These functions are defined in utils.c
+extern int16_t sin_lookup(uint16_t angle);
+extern int16_t cos_lookup(uint16_t angle);
+extern int16_t clamp(int16_t value, int16_t min, int16_t max);
 
-#define PHYSICS_GRAVITY GRAVITY
-#define AIR_RESISTANCE 0.0f
-#define BOUNCE_FACTOR 0.0f
-#define MIN_VELOCITY_THRESHOLD 1
+/* ===========================
+   FUNCTION DECLARATIONS
+   =========================== */
+void init_ball(Ball* ball, int16_t x, int16_t y);
+void shoot_ball(Ball* ball, uint8_t power, uint8_t angle);
+void update_ball_physics(Ball* ball, float dt);
+int16_t calculate_shot_angle(uint8_t depth_position);
+void reset_ball_to_player(Ball* ball, int16_t player_x, int16_t player_y);
+bool is_ball_on_ground(const Ball* ball);
+uint16_t get_ball_speed(const Ball* ball);
 
+/* ===========================
+   FUNCTION IMPLEMENTATIONS
+   =========================== */
 
-
-static void apply_gravity(Ball* ball, float delta_time);
-static void apply_air_resistance(Ball* ball, float delta_time);
-static int16_t calculate_initial_vx(uint8_t power, int16_t angle);
-static int16_t calculate_initial_vy(uint8_t power, int16_t angle);
-
-
-
+/**
+ * Initialize ball at a specific position
+ * Sets ball to inactive (not in flight)
+ */
 void init_ball(Ball* ball, int16_t x, int16_t y) {
     ball->x = x;
     ball->y = y;
+    ball->fx = (float)x;
+    ball->fy = (float)y;
     ball->vx = 0;
     ball->vy = 0;
     ball->active = false;
 }
 
-void shoot_ball(Ball* ball, uint8_t power, int16_t angle) {
-    if (power < MIN_SHOT_POWER) {
-        power = MIN_SHOT_POWER;
-    }
-    if (power > MAX_SHOT_POWER) {
-        power = MAX_SHOT_POWER;
-    }
-    
-    if (angle < 0) {
-        angle = 0;
-    }
+/**
+ * Launch the ball with given power and angle
+ * Power: 0-255 (scaled to velocity)
+ * Angle: 0-90 degrees (shot trajectory)
+ */
+void shoot_ball(Ball* ball, uint8_t power, uint8_t angle) {
+    // Clamp angle to valid range
     if (angle > 90) {
         angle = 90;
     }
     
-    ball->vx = calculate_initial_vx(power, angle);
-    ball->vy = calculate_initial_vy(power, angle);
+    // Calculate velocity components using lookup tables
+    // vx = power * cos(angle) / 1000
+    // vy = -(power * sin(angle) / 1000)  [negative = upward]
+    ball->vx = (power * cos_lookup(angle)) / 1000;
+    ball->vy = -(power * sin_lookup(angle)) / 1000;
     
-    /* Mark ball as in flight */
+    // Activate the ball
     ball->active = true;
+    
+    // Initialize fractional accumulators
+    ball->fx = (float)ball->x;
+    ball->fy = (float)ball->y;
 }
 
-void update_ball_physics(Ball* ball, float delta_time) {
+/**
+ * Update ball physics for one frame
+ * dt: Time step in seconds (typically 0.033 for 30 FPS)
+ * 
+ * Uses projectile motion equations:
+ *   x(t) = x0 + vx * dt
+ *   y(t) = y0 + vy * dt
+ *   vy(t) = vy0 + g * dt
+ */
+void update_ball_physics(Ball* ball, float dt) {
     if (!ball->active) {
         return;
     }
-
-    ball->x += (int16_t)(ball->vx * delta_time);
-    ball->y += (int16_t)(ball->vy * delta_time);
-
-    apply_gravity(ball, delta_time);
     
-    if (AIR_RESISTANCE > 0.0f) {
-        apply_air_resistance(ball, delta_time);
-    }
+    // Update fractional position (sub-pixel precision)
+    ball->fx += ball->vx * dt;
+    ball->fy += ball->vy * dt;
     
-    if (ball->x < -100 || ball->x > SCREEN_WIDTH + 100) {
-        ball->active = false;
-    }
-    if (ball->y > SCREEN_HEIGHT + 100) {
-        ball->active = false;
+    // Update integer position (for rendering)
+    ball->x = (int16_t)ball->fx;
+    ball->y = (int16_t)ball->fy;
+    
+    // Apply gravity to vertical velocity
+    ball->vy += GRAVITY * dt;
+    
+    // Keep ball within screen bounds (horizontal)
+    if (ball->x < BALL_RADIUS) {
+        ball->x = BALL_RADIUS;
+        ball->fx = (float)BALL_RADIUS;
+        ball->vx = -ball->vx / 2;  // Bounce with damping
+    } else if (ball->x > SCREEN_WIDTH - BALL_RADIUS) {
+        ball->x = SCREEN_WIDTH - BALL_RADIUS;
+        ball->fx = (float)(SCREEN_WIDTH - BALL_RADIUS);
+        ball->vx = -ball->vx / 2;  // Bounce with damping
     }
 }
 
-int16_t calculate_shot_angle(uint8_t player_depth) {
-
-    
-    /* Clamp depth to valid range */
-    if (player_depth > PLAYER_MAX_DEPTH) {
-        player_depth = PLAYER_MAX_DEPTH;
+/**
+ * Calculate shot angle based on player's depth position
+ * Closer to hoop = lower arc, farther = higher arc
+ * 
+ * depth_position: 0 (close) to 10 (far)
+ * Returns: Angle in degrees (30-60 range)
+ */
+int16_t calculate_shot_angle(uint8_t depth_position) {
+    // Clamp depth to valid range
+    if (depth_position > 10) {
+        depth_position = 10;
     }
     
-    /* Base angle for medium distance */
-    int16_t base_angle = 50;
-
-    int16_t angle_adjustment = (PLAYER_MAX_DEPTH - player_depth) * 1;
-    
-    int16_t final_angle = base_angle + angle_adjustment;
-    
-    if (final_angle < 40) {
-        final_angle = 40;
-    }
-    if (final_angle > 70) {
-        final_angle = 70;
-    }
-    
-    return final_angle;
+    // Map depth (0-10) to angle (30-60 degrees)
+    // Close shots use lower arc, far shots use higher arc
+    return 30 + (depth_position * 3);
 }
 
-void reset_ball_to_player(Ball* ball, Player* player) {
-    ball->x = player->x;
-    ball->y = player->y - (PLAYER_HEIGHT / 2) - BALL_RADIUS;
-    
+/**
+ * Reset ball to player's position
+ * Used when returning ball after a shot
+ */
+void reset_ball_to_player(Ball* ball, int16_t player_x, int16_t player_y) {
+    ball->x = player_x;
+    ball->y = player_y - 20;  // Slightly above player
+    ball->fx = (float)ball->x;
+    ball->fy = (float)ball->y;
     ball->vx = 0;
     ball->vy = 0;
-    
-    /* Mark as inactive */
     ball->active = false;
 }
 
-bool is_ball_on_ground(Ball* ball) {
-    /* Check if bottom of ball is at or below floor level */
-    int16_t ball_bottom = ball->y + BALL_RADIUS;
-    return (ball_bottom >= FLOOR_Y);
+/**
+ * Check if ball has hit the ground
+ * Returns true if ball is at or below floor level
+ */
+bool is_ball_on_ground(const Ball* ball) {
+    // Ground is at bottom of screen
+    return (ball->y >= SCREEN_HEIGHT - BALL_RADIUS);
 }
 
-uint16_t get_ball_speed(Ball* ball) {
-    /* Calculate magnitude of velocity vector
-       speed = sqrt(vx^2 + vy^2)
-    */
-    int32_t vx_squared = (int32_t)ball->vx * (int32_t)ball->vx;
-    int32_t vy_squared = (int32_t)ball->vy * (int32_t)ball->vy;
-    uint32_t speed_squared = vx_squared + vy_squared;
-    
-    return (uint16_t)int_sqrt(speed_squared);
-}
-
-void apply_impulse(Ball* ball, int16_t vx, int16_t vy) {
-    ball->vx += vx;
-    ball->vy += vy;
-}
-
-static void apply_gravity(Ball* ball, float delta_time) {
-
-    int16_t gravity_delta = (int16_t)(PHYSICS_GRAVITY * delta_time);
-    ball->vy += gravity_delta;
-    
-    if (ball->vy > 500) {
-        ball->vy = 500;
-    }
-}
-
-static void apply_air_resistance(Ball* ball, float delta_time) {
-    /* Apply air resistance (drag force)
-       F_drag = -k * v
-    */
-    
-    if (AIR_RESISTANCE == 0.0f) {
-        return;
-    }
-    
-    /* Apply resistance proportional to velocity */
-    float resistance_factor = 1.0f - (AIR_RESISTANCE * delta_time);
-    
-    if (resistance_factor < 0.0f) {
-        resistance_factor = 0.0f;
-    }
-    
-    ball->vx = (int16_t)(ball->vx * resistance_factor);
-    ball->vy = (int16_t)(ball->vy * resistance_factor);
-}
-
-static int16_t calculate_initial_vx(uint8_t power, int16_t angle) {
-    
-    int16_t cos_value = cos_lookup(angle);
-    
-    int32_t vx = ((int32_t)power * (int32_t)cos_value) / 1000;
-    
-    return (int16_t)vx;
-}
-
-static int16_t calculate_initial_vy(uint8_t power, int16_t angle) {
-    int16_t sin_value = sin_lookup(angle);
-    
-    /* -(power * sin(angle) / 1000) */
-    int32_t vy = -((int32_t)power * (int32_t)sin_value) / 1000;
-    
-    return (int16_t)vy;
+uint16_t get_ball_speed(const Ball* ball) {
+    int16_t vx_abs = abs_value(ball->vx);
+    int16_t vy_abs = abs_value(ball->vy);
+    uint32_t speed_squared = (uint32_t)(vx_abs * vx_abs) + (uint32_t)(vy_abs * vy_abs);
+    return int_sqrt(speed_squared);
 }

@@ -1,49 +1,71 @@
-<<<<<<< HEAD
-#include "vga.h"
-#include "common.h"
+#include "../include/common.h"
+#include <stdio.h>
 
-int main() {
-    init_vga();
-    
-    // Draw color bars
-    vga_draw_rect(0, 0, 80, 240, COLOR_RED);
-    vga_draw_rect(80, 0, 80, 240, COLOR_GREEN);
-    vga_draw_rect(160, 0, 80, 240, COLOR_BLUE);
-    vga_draw_rect(240, 0, 80, 240, COLOR_WHITE);
-    
-    // Infinite loop - keep display active
-    while(1);
-=======
-// test_vga.c - Run this first on the board
-#include <stdint.h>
+// Include the C files directly
+#include "utils.c"
+#include "physics.c"
 
-#define VGA_BASE 0xC8000000  // ADJUST THIS!
-#define SCREEN_WIDTH 320
-#define SCREEN_HEIGHT 240
-
-volatile uint16_t* pixel_buffer = (uint16_t*)VGA_BASE;
-
-void draw_pixel(int x, int y, uint16_t color) {
-    if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
-        pixel_buffer[y * SCREEN_WIDTH + x] = color;
-    }
-}
+/* ===========================
+   MAIN TEST PROGRAM
+   =========================== */
 
 int main(void) {
-    // Test 1: Fill screen with red
-    for (int y = 0; y < SCREEN_HEIGHT; y++) {
-        for (int x = 0; x < SCREEN_WIDTH; x++) {
-            draw_pixel(x, y, 0xF800);  // Red in RGB565
+    Ball ball;
+    Player player = {100, 200, 5};
+    
+    // Initialize ball at player position
+    init_ball(&ball, player.x, player.y);
+    
+    printf("=== Basketball Physics Test ===\n\n");
+    
+    printf("Before shooting:\n");
+    printf("  Position: (%d, %d)\n", ball.x, ball.y);
+    printf("  Velocity: (%d, %d)\n", ball.vx, ball.vy);
+    printf("  Active: %s\n", ball.active ? "true" : "false");
+    printf("\n");
+    
+    // Shoot with power 90, angle 45 degrees
+    shoot_ball(&ball, 90, 45);
+    
+    printf("Immediately after shooting:\n");
+    printf("  Position: (%d, %d)\n", ball.x, ball.y);
+    printf("  Velocity: (%d, %d)\n", ball.vx, ball.vy);
+    printf("  Active: %s\n", ball.active ? "true" : "false");
+    printf("  Speed: %u px/s\n", get_ball_speed(&ball));
+    printf("\n");
+    
+    printf("Physics simulation (dt=0.033s, ~30 FPS):\n");
+    printf("%-8s %-8s %-8s %-8s %-8s\n", "Frame", "X", "Y", "VX", "VY");
+    printf("--------------------------------------------------\n");
+    
+    // Simulate 100 frames max
+    for (int frame = 0; frame < 100; frame++) {
+        // Print state BEFORE update for frame 0
+        if (frame == 0 || frame % 10 == 0) {
+            printf("%-8d %-8d %-8d %-8d %-8d\n",
+                   frame, ball.x, ball.y, ball.vx, ball.vy);
+        }
+        
+        // Update physics
+        update_ball_physics(&ball, 0.033f);
+        
+        // Check if hit ground
+        if (is_ball_on_ground(&ball)) {
+            printf("\nBall hit ground at frame %d!\n", frame + 1);
+            printf("  Final position: (%d, %d)\n", ball.x, ball.y);
+            printf("  Final velocity: (%d, %d)\n", ball.vx, ball.vy);
+            printf("  Distance traveled: %d pixels\n", ball.x - player.x);
+            break;
+        }
+        
+        // Safety check - ball went off screen
+        if (!ball.active) {
+            printf("\nBall went off screen at frame %d\n", frame + 1);
+            break;
         }
     }
->>>>>>> 1e3aaa6a6546cea74414e956fc2eaaf9d9b6f432
     
-    // Test 2: Draw white cross in center
-    for (int i = 0; i < 50; i++) {
-        draw_pixel(SCREEN_WIDTH/2 + i, SCREEN_HEIGHT/2, 0xFFFF);
-        draw_pixel(SCREEN_WIDTH/2, SCREEN_HEIGHT/2 + i, 0xFFFF);
-    }
+    printf("\n=== Test Complete ===\n");
     
-    while(1);  // Hang to see result
     return 0;
 }
