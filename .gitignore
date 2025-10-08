@@ -1,4 +1,19 @@
 .DS_Store
+<<<<<<< HEAD
+basketball_game/build/game_state.o
+basketball_game/build/game_physics.o
+basketball_game/build/graphics.o
+basketball_game/build/hardware.o
+basketball_game/build/helper.o
+.gitignore
+basketball_game/build/inputs.o
+basketball_game/build/sprites.o
+basketball_game/build/vga.o
+basketball_game/build/main.o
+basketball_game/basketball_game.bin
+basketball_game/basketball_game.elf
+basketball_game/linker.ld
+=======
 basketball_game/build/basketball_game.map
 basketball_game/basketball_game.bin
 basketball_game/basketball_game.elf
@@ -13,3 +28,4 @@ basketball_game/build/inputs.o
 basketball_game/build/helper.o
 basketball_game/build/main.o
 basketball_game/build/startup.o
+>>>>>>> 1e3aaa6a6546cea74414e956fc2eaaf9d9b6f432
