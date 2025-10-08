@@ -67,8 +67,8 @@ typedef struct {
 } Player;
 
 typedef struct {
-    int16_t x, y;           /* Position */
-    uint16_t width, height; /* Dimensions */
+    int16_t x, y;           
+    uint16_t width, height; 
 } Hoop;
 
 typedef struct {
